@@ -1,0 +1,134 @@
+---
+title: "Exploratory Data Analysis ~ R Coursera Project"
+subtitle: "Data on Individual Household Electric Power Consumption"
+author: "Shibani S Otis"
+date: "8/21/2020"
+output: html_document
+---
+
+```{r setup, echo=FALSE}
+# The "echo = FALSE" option hides this chunk of code 
+knitr::opts_knit$set(root.dir = "~/Documents/Coursera Data Science Specialization: Using R/Data Sets/")
+```
+
+### Introduction
+
+This assignment uses data from the UC Irvine Machine Learning Repository, a popular repository for machine learning datasets. In particular, we will be using the "Household Electric Power Consumption" dataset which measures the electric power consumption in one household with a one-minute sampling rate over a period of almost 4 years. Different electrical quantities and some sub-metering values are available.
+
+The following descriptions of the 9 variables in the dataset are taken from the UCI web site:
+
+1. **Date**: Date in format dd/mm/yyyy
+2. **Time**: time in format hh:mm:ss
+3. **Global_active_power**: household global minute-averaged active power (in kilowatt)
+4. **Global_reactive_power**: household global minute-averaged reactive power (in kilowatt)
+5. **Voltage**: minute-averaged voltage (in volt)
+6. **Global_intensity**: household global minute-averaged current intensity (in ampere)
+7. **Sub_metering_1**: energy sub-metering No. 1 (in watt-hour of active energy). It corresponds to the kitchen, containing mainly a dishwasher, an oven and a microwave (hot plates are not electric but gas powered).
+8. **Sub_metering_2**: energy sub-metering No. 2 (in watt-hour of active energy). It corresponds to the laundry room, containing a washing-machine, a tumble-drier, a refrigerator and a light.
+9. **Sub_metering_3**: energy sub-metering No. 3 (in watt-hour of active energy). It corresponds to an electric water-heater and an air-conditioner.
+
+The dataset has 2,075,259 rows and 9 columns. We will only be using data from the dates 2007-02-01 and 2007-02-02. 
+    
+### Data Processing
+
+Let's load the electric power consumption data:
+
+```{r}
+# Note: Missing values are coded in as "?" in this data set
+powerData <- read.table("household_power_consumption.txt", header = T, sep = ";", na.strings = "?", colClasses = c("character", "character", rep("numeric", 7)))
+
+head(powerData)
+```
+&nbsp;  
+
+Since we will only be using data from 2007-02-01 and 2007-02-02, we need to subset the data:
+
+```{r}
+# We need an "OR" operator i.e. | when using subset. Note, concatenate doesn't work here! 
+subsetFeb <- subset(powerData, Date == "1/2/2007" | Date == "2/2/2007")
+
+head(subsetFeb)
+```
+
+&nbsp; 
+
+Now let's plot our first plot, a histogram and save it as a PNG file with a width of 480 pixels and a height of 480 pixels: 
+
+```{r}
+# First we need to specify where we want to save the plot  
+#png(file="~/Documents/Coursera Data Science Specialization: Using R/Coursera Projects/Exploratory Data Analysis/plot1.png", width = 480, height = 480)
+
+# Then we run the plot we want to save
+hist(subsetFeb$Global_active_power, col = "red", xlab = "Global Active Power (kilowatts)", main = "Global Active Power")
+
+# Lastly, turn the PNG graphics device off
+#dev.off()        
+```
+&nbsp;  
+
+Now we need to convert the "Date" and "Time" columns to the appropriate format:
+
+```{r}
+# Created a new column which took dates & times from the subset data, formatted into POSIXct
+subsetFeb$DateTime <- as.POSIXct(paste(subsetFeb$Date, subsetFeb$Time), format = "%d/%m/%Y %H:%M:%S")
+
+# Alternatively, we could have used the "strptime" function which uses POSIXlt:
+#subsetFeb$DateTime <- strptime(paste(subsetFeb$Date, subsetFeb$Time), format = "%d/%m/%Y %H:%M:%S")
+
+# Re-ordered the columns in the data set  
+powerFinal <- subsetFeb[ ,c(1,2,10,3:9)]
+
+head(powerFinal)
+```
+&nbsp; 
+
+The second plot is a line graph. Let's save this plot as a 480 pixels by 480 pixels PNG:
+
+```{r}
+#png(file="~/Documents/Coursera Data Science Specialization: Using R/Coursera Projects/Exploratory Data Analysis/plot2.png", width = 480, height = 480)
+
+plot(powerFinal$DateTime, powerFinal$Global_active_power, type = "l", xlab = "", ylab = "Global Active Power (kilowatt)")
+#dev.off()
+```
+
+&nbsp; 
+
+Now to make the third plot and save as a PNG:
+
+```{r}
+#png(file="~/Documents/Coursera Data Science Specialization: Using R/Coursera Projects/Exploratory Data Analysis/Project 1 Plots/plot3.png", width = 480, height = 480)
+
+plot(powerFinal$DateTime, powerFinal$Sub_metering_1, type = "l", xlab = "", ylab = "Energy sub metering")
+
+# We need to add additional lines to the plot, thus we use the "lines" function instead of "plot"
+lines(powerFinal$DateTime, powerFinal$Sub_metering_2, type = "l", col = "red", xlab = "", ylab = "Energy sub metering")
+lines(powerFinal$DateTime, powerFinal$Sub_metering_3, type = "l", col = "blue", xlab = "", ylab = "Energy sub metering")
+
+# Created a legend
+legend("topright", lty = 1, col = c("black", "red", "blue"), legend = c("Sub_metering_1", "Sub_metering_2", "Sub_metering_3"))
+#dev.off()
+```
+
+&nbsp; 
+
+The last plot consists of the 2nd and 3rd plots, along with two other plots saved as a PNG file:
+
+```{r}
+#png(file="~/Documents/Coursera Data Science Specialization: Using R/Coursera Projects/Exploratory Data Analysis/plot4.png", width = 480, height = 480)
+
+# We need 2 rows and 2 columns for our plots and an appropriate margin to fit them all
+par(mfcol = c(2,2), mar = c(5,5,2,2))
+
+plot(powerFinal$DateTime, powerFinal$Global_active_power, type = "l", xlab = "", ylab = "Global Active Power")
+
+plot(powerFinal$DateTime, powerFinal$Sub_metering_1, type = "l", xlab = "", ylab = "Energy sub metering")
+lines(powerFinal$DateTime, powerFinal$Sub_metering_2, type = "l", col = "red", xlab = "", ylab = "Energy sub metering")
+lines(powerFinal$DateTime, powerFinal$Sub_metering_3, type = "l", col = "blue", xlab = "", ylab = "Energy sub metering")
+legend("topright", lty = 1, col = c("black", "red", "blue"), legend = c("Sub_metering_1", "Sub_metering_2", "Sub_metering_3"), cex = 0.75, bty = "n")   # bty ="n" removes box around the legend; cex reduces its size 
+
+plot(powerFinal$DateTime, powerFinal$Voltage, type = "l", xlab = "datetime", ylab = "Voltage")
+
+plot(powerFinal$DateTime, powerFinal$Global_reactive_power, type = "l", xlab = "datetime", ylab = "Global_reactive_power")
+#dev.off()
+```
+
