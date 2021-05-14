@@ -1,0 +1,228 @@
+---
+title: "Exploratory Data Analysis ~ R Coursera Project"
+subtitle: "Data Analysis on Fine Patriculate Matter in Baltimore City and Los Angeles"
+author: "Shibani S Otis"
+date: "9/10/2020"
+output: html_document
+---
+
+```{r setup, echo=FALSE}
+knitr::opts_knit$set(root.dir = "~/Documents/Coursera Data Science Specialization: Using R/Data Sets/")
+```
+
+### Introduction
+
+"Fine particulate matter (PM2.5) is an ambient air pollutant for which there is strong evidence that it is harmful to human health. In the United States, the Environmental Protection Agency (EPA) is tasked with setting national ambient air quality standards for fine PM and for tracking the emissions of this pollutant into the atmosphere. Approximately every 3 years, the EPA releases its database on emissions of PM2.5. This database is known as the National Emissions Inventory (NEI).
+
+For each year and for each type of PM source, the NEI records how many tons of PM2.5 were emitted from that source over the course of the entire year. The data that we will use for this assignment are for 1999, 2002, 2005, and 2008."
+
+PM2.5 Emissions Data (<span style="color: red">**summarySCC_PM25.rds**</span>): This file contains a data frame with all of the PM2.5 emissions data for 1999, 2002, 2005, and 2008. For each year, the table contains number of tons of PM2.5 emitted from a specific type of source for the entire year. 
+
+1. <span style="color: red">**fips**</span>: A five-digit number (represented as a string)                               indicating the U.S. county
+2. <span style="color: red">**SCC**</span>: The name of the source as indicated by a digit string (see source code classification table)
+
+3. <span style="color: red">**Pollutant**</span>: A string indicating the pollutant
+
+4. <span style="color: red">**Emissions**</span>: Amount of PM2.5 emitted, in tons
+
+5. <span style="color: red">**type**</span>: The type of source (point, non-point, on-road, or non-road)
+
+6. <span style="color: red">**year**</span>: The year of emissions recorded
+
+Source Classification Code Table (<span style="color: red">**Source_Classification_Code.rds**</span>): This table provides a mapping from the SCC digit strings in the Emissions table to the actual name of the PM2.5 source. The sources are categorized in a few different ways from more general to more specific and we may choose to explore whatever categories we think are most useful. For example, source “10100101” is known as “Ext Comb /Electric Gen /Anthracite Coal /Pulverized Coal”.
+
+### Data Processing
+
+Let's read each of the two files using the readRDS() function in R:
+
+```{r}
+NEI <- readRDS("summarySCC_PM25.rds")
+SCC <- readRDS("Source_Classification_Code.rds")
+```
+
+Let's take a glimpse of the two data sets:
+
+```{r}
+str(NEI)
+str(SCC)
+```
+
+Now, let's plot the total PM2.5 emission from all sources for each year - 1999, 2002, 2005, and 2008:
+
+```{r}
+year <- as.Date(as.character(NEI$year), "%Y")
+
+totalEm <- tapply(NEI$Emissions, year, sum)     # Total emission by year
+
+xyears <- names(totalEm)                       # Creates the years as labels for the x-axis
+
+# Saved the plot as a PNG file:
+#png(file="~/Documents/Coursera Data Science Specialization: Using R/Coursera Projects/Exploratory Data Analysis/Project2 Plots/plot1.png", width = 480, height = 480)
+
+par(mar = c(5,5,4,2))                           # Adjusted the margins
+
+options(scipen=999)                             # Disabled scientific notation from both axes 
+# NOTE: "xaxt" allows us to set the x-axis lables as "none" so we can modify them as needed 
+plot(totalEm, col = "blue", cex = 1.5, type = "o", main = expression("Total PM"[2.5]*" Emissions From 1999-2008 in the U.S."), xaxt = "n", xlab = "Year", ylab = expression("PM"[2.5]*" Emitted (in tons)"))
+# Modified the x-axis to display just the years we are concerned with
+axis(1, at=1:length(xyears), labels = xyears)
+
+#dev.off()
+```
+
+We see that the total emissions in the U.S. have decreased from 1999 to 2008.
+
+&nbsp;  
+
+Let's plot total emissions from PM2.5 in Baltimore City, Maryland from 1999 to 2008:
+
+```{r}
+year <- as.Date(as.character(NEI$year), "%Y")
+
+# fips == "24510" is a county code to Baltimore city
+Baltimore <- subset(NEI, fips == "24510")       # OR, NEI[NEI$fips == "24510", ]
+
+# Using the "aggregate" fxn returns a df (unlike "tapply" which returns an array)
+totalBalt <- aggregate(Emissions~year, Baltimore, sum)
+
+#png(file="~/Documents/Coursera Data Science Specialization: Using R/Coursera Projects/Exploratory Data Analysis/Project2 Plots/plot2.png")
+par(mar = c(5,6,4,2)) 
+
+plot(totalBalt$year, totalBalt$Emissions, pch = 20, col = "Red", cex = 1.5, type = "o", 
+     main = expression("Total PM"[2.5]*" Emissions in Baltimore City"), xlab = "Year", 
+     ylab = expression("PM"[2.5]*" Emitted (in tons)"))
+#dev.off()
+```
+
+We see that the total emissions in Baltimore City, Maryland decreased from 1999 to 2002, increased from 2002 to 2005, and then decreased from 2005 to 2008. 
+
+&nbsp;  
+
+Using ggplot2, let's see which of the four types of sources (point, nonpoint, onroad, nonroad) have seen decreases in emissions from 1999–2008 for Baltimore City and which have seen increases in emissions from 1999–2008:
+
+```{r}
+library(ggplot2)
+
+#year <- as.Date(as.character(NEI$year), "%Y")
+
+Baltimore <- subset(NEI, fips == "24510")
+
+# NOTE: We need to add the type column in the totalBalt df
+totalBalt2 <- aggregate(Emissions~year + type, Baltimore, sum)
+
+#png(file="~/Documents/Coursera Data Science Specialization: Using R/Coursera Projects/Exploratory Data Analysis/Project2 Plots/plot3.png")
+
+ggplot(totalBalt2, aes(year, Emissions)) + 
+        geom_point(aes(color = type), size = 2) + 
+        geom_line(aes(color = type)) + 
+        labs(title = expression("Total Baltimore City PM"[2.5]*" Emissions By Source Type")) +
+        labs(x = "Year") + 
+        labs(y = expression("PM"[2.5]*" Emitted (in tons)")) + 
+                scale_color_discrete("Type of Source") + 
+                theme(plot.title = element_text(hjust = 0.5), 
+                      legend.title = element_text(face = "bold"), 
+                      plot.margin = margin(1, 0.5, 1, 1, "cm")) # margin(top, right, bottom, left, "units")
+#dev.off()
+```
+
+We see that nonpoint, non-road, and on-road sources all saw decreased emissions from 1999 to 2008 in Baltimore City. The point source saw increased emissions from 1999 to 2005 and decreased emission from 2005 to 2008 in Baltimore City. 
+
+&nbsp; 
+
+Let's see how emissions from coal combustion-related sources changed from 1999–2008 across the United States:
+
+```{r}
+library(ggplot2)
+
+year <- as.Date(as.character(NEI$year), "%Y")
+
+# Need to pattern match on the word "Coal" or "coal" in Short.Name from SCC to subset the df with emissions from coal combustion 
+SCC_coal <- SCC[grepl("coal", SCC$Short.Name, ignore.case = T),]
+
+# Need to see which source codes(SCC) from the NEI df match with the coal source codes (in SCC_coal) and use this condition to subset the NEI df  
+NEI_coal <- NEI[NEI$SCC %in% SCC_coal$SCC,]
+
+# Now create a df that gets the total emissions from coal combustion-related sources
+totalCoal <- aggregate(Emissions~year + type, NEI_coal, sum)
+
+#png(file="~/Documents/Coursera Data Science Specialization: Using R/Coursera Projects/Exploratory Data Analysis/Project2 Plots/plot4.png")
+options(scipen=999)    
+
+ggplot(totalCoal, aes(year, Emissions)) +
+        geom_point(aes(color = type), size = 2) +
+        geom_line(aes(color = type)) +
+        labs(title = expression("Total PM"[2.5]*" Emissions in the U.S. From Coal Combustion-Related Sources")) + labs(x = "Year") + labs(y = expression("PM"[2.5]*" Coal Emission (in tons)")) +
+        scale_color_discrete("Type of Source") +
+        theme(plot.title = element_text(hjust = 0.5), 
+              legend.title = element_text(face = "bold"),
+              plot.margin = margin(1.25, 0.5, 1, 1, "cm"))
+#dev.off()
+```
+
+The total emission from coal combustion point sources decreased from 1999 to 2008 across the U.S. The total emission from coal combustion non-point sources increased from 1999 to 2002, didn't change from 2002 to 2005, and decreased from 2005 to 2008 across the U.S.
+
+&nbsp; 
+
+Let's see how emissions from motor vehicle sources have changed from 1999–2008 in Baltimore City:
+
+```{r}
+library(ggplot2)
+
+year <- as.Date(as.character(NEI$year), "%Y")
+
+OnRoadBalt <- subset(NEI, fips == "24510" & type == "ON-ROAD") 
+
+totalOnRD <- aggregate(Emissions~year, OnRoadBalt, sum)
+
+#png(file="~/Documents/Coursera Data Science Specialization: Using R/Coursera Projects/Exploratory Data Analysis/Project2 Plots/plot5.png")
+ggplot(totalOnRD, aes(year,Emissions)) + 
+        geom_point(color = "purple") + 
+        geom_line(color = "purple") +
+        labs(title = expression("Total PM"[2.5]*" Emissions From Motor Vehicle Sources in Baltimore City")) +
+        labs(x = "Year") +
+        labs(y = expression("PM"[2.5]*" On-Road Emission (in tons)")) +
+        theme(plot.title = element_text(hjust = 0.5), plot.margin = margin(1,1,1,1, "cm"))
+#dev.off()
+```
+
+The total emissions from motor vehicle sources (i.e. on-road) decreased drastically from 1999 to 2002, then more gradually from 2002 to 2008 in Baltimore City, Maryland. 
+
+&nbsp;
+
+Finally, let's compare emissions from motor vehicle sources in Baltimore City with emissions from motor vehicle sources in Los Angeles County, California to see which city has seen greater changes over time in motor vehicle emissions:
+
+```{r}
+library(ggplot2)
+
+year <- as.Date(as.character(NEI$year), "%Y")
+
+# For Baltimore City:
+OnRoadBalt <- subset(NEI, fips == "24510" & type == "ON-ROAD") 
+totalOnRD <- aggregate(Emissions~year, OnRoadBalt, sum)
+
+# For Los Angeles:
+OnRoadLA <- subset(NEI, fips == "06037" & type == "ON-ROAD")
+totalLA <- aggregate(Emissions~year, OnRoadLA, sum)
+
+# Need to merge the two df's into one 
+mergedEm <- merge(totalOnRD, totalLA, by = "year")
+mergedEm
+
+# Then need to "melt" (i.e. reshape) merged df so the names of the variables are stored in the same column. This is done using the "reshape2" package
+library(reshape2)       
+meltedEm <- melt(mergedEm, id.vars = "year")    # we want each year to be the ID variables  
+meltedEm
+
+#png(file="~/Documents/Coursera Data Science Specialization: Using R/Coursera Projects/Exploratory Data Analysis/Project2 Plots/plot6.png")
+
+# Need to set color by "variable" to differ b/w LA and Baltimore City, which is done with aes()
+ggplot(meltedEm, aes(year, value, col = variable)) + geom_point() + geom_line() +
+        scale_color_discrete(name = "City", labels = c("Baltimore City", "Los Angeles")) +
+        labs(title = expression("Total PM"[2.5]*" Emissions From Motor Vehicle Sources in Baltimore City and L.A.")) + labs(x = "Year") + labs(y = expression("PM"[2.5]*" On-Road Emission (in tons)")) +
+        theme(plot.title = element_text(hjust = 0.5) , legend.title = element_text(face = "bold"), 
+              plot.margin = margin(1, 0, 0.5, 1, "cm"))
+        
+#dev.off()
+```
+
+Clearly, the emissions from motor vehicle sources were much higher in Los Angeles than Baltimore City from 1999 to 2008.
